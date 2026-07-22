@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="Sipariş takip — Yarımca Kale Bibercisi" />
+  <title>Sipariş Takip | Yarımca Kale Bibercisi</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Great+Vibes&family=Instrument+Serif:ital@0;1&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="shop.css" />
+</head>
+<body class="page-track">
+  <a class="skip-link" href="#main">İçeriğe geç</a>
+  <div class="announcement-bar" id="announcement-bar" hidden>
+    <p id="announcement-text"></p>
+  </div>
+
+  <header class="site-header site-header--brand" id="top">
+    <div class="header-inner">
+      <a class="logo logo--brand-link" href="/" aria-label="Ana sayfa">
+        <img class="logo-img" id="site-logo-img" src="/images/logo-yuvarlak.png" alt="Yarımca Kale Bibercisi" width="46" height="46" />
+        <span class="logo-text logo-text--hero" id="site-brand-name">Yarımca <em>Kale Bibercisi</em></span>
+      </a>
+      <nav class="nav nav--desktop" aria-label="Ana menü">
+        <ul id="nav-menu" class="nav-list nav-list--center">
+          <li><a href="/#urunler">Ürünler</a></li>
+          <li><a href="/#yorumlar">Yorumlar</a></li>
+          <li><a href="/#hakkimizda">Hakkında</a></li>
+          <li><a href="/takip.html" aria-current="page">Sipariş takip</a></li>
+          <li><a href="/hesap.html">Hesabım</a></li>
+          <li><a href="/#sss">SSS</a></li>
+          <li><a href="/#iletisim">İletişim</a></li>
+        </ul>
+      </nav>
+      <div class="header-actions">
+        <a href="/hesap.html" class="header-account-link" id="header-account-link">Giriş</a>
+        <button type="button" class="nav-toggle" aria-expanded="false" aria-controls="nav-menu">
+          <span class="nav-toggle-bar"></span>
+          <span class="sr-only">Menü</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main id="main" class="track-page-main">
+    <section class="section track-page-section">
+      <div class="container narrow">
+        <h1 class="section-title">Sipariş takip</h1>
+        <p class="prose">Sipariş numaranızı girerek kargo ve teslimat durumunu öğrenin (ör. KB-…).</p>
+        <form class="track-form track-form--page" id="track-form">
+          <label class="sr-only" for="track-id">Sipariş numarası</label>
+          <input type="text" id="track-id" placeholder="Sipariş numarası" required autocomplete="off" />
+          <button type="submit" class="btn btn-primary">Sorgula</button>
+        </form>
+        <div class="track-result track-result--page" id="track-result" hidden></div>
+        <p class="fineprint track-page-back"><a href="/">← Mağazaya dön</a></p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container footer-inner footer-pro">
+      <p class="footer-brand" id="footer-brand">Yarımca Kale Bibercisi</p>
+      <p class="footer-copy">© <span id="year"></span> · <span id="footer-address"></span></p>
+    </div>
+  </footer>
+
+  <script src="track.js" type="module"></script>
+</body>
+</html>
