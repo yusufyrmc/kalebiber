@@ -2,6 +2,3 @@ node_modules/
 data/
 .env
 .gstack/
-.next/
-node_modules/
-.env
