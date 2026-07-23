@@ -1640,12 +1640,18 @@ app.get("/giris", (_req, res) => res.redirect(302, "/hesap.html?tab=giris"));
 app.use("/uploads", express.static(UPLOAD_DIR, { maxAge: "7d" }));
 app.use(express.static(ROOT));
 
-app.listen(PORT, () => {
-  console.log(`Kale Biber: http://localhost:${PORT}`);
-  console.log(`Yönetim:  http://localhost:${PORT}/admin`);
-  if (supabaseServer.isSupabaseEnabled()) {
-    console.log("Kimlik doğrulama: Supabase");
-  } else {
-    console.warn("Supabase kapalı — .env içine SUPABASE_URL ve SUPABASE_SERVICE_ROLE_KEY ekleyin (supabase/schema.sql çalıştırın).");
-  }
-});
+if (process.env.VERCEL) {
+  module.exports = app;
+} else {
+  app.listen(PORT, () => {
+    console.log(`Kale Biber: http://localhost:${PORT}`);
+    console.log(`Yönetim:  http://localhost:${PORT}/admin`);
+    if (supabaseServer.isSupabaseEnabled()) {
+      console.log("Kimlik doğrulama: Supabase");
+    } else {
+      console.warn("Supabase kapalı — .env içine SUPABASE_URL ve SUPABASE_SERVICE_ROLE_KEY ekleyin (supabase/schema.sql çalıştırın).");
+    }
+  });
+}
+
+module.exports = app;
