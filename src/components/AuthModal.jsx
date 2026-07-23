@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 
 export default function AuthModal() {
-  const { isAuthModalOpen, setIsAuthModalOpen, loginUser } = useAuth();
+  const { isAuthModalOpen, setIsAuthModalOpen, loginWithEmail, signUpWithEmail } = useAuth();
   const [tab, setTab] = useState("login");
 
   const [email, setEmail] = useState("");
@@ -14,38 +14,28 @@ export default function AuthModal() {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [infoMessage, setInfoMessage] = useState("");
 
   if (!isAuthModalOpen) return null;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+    setInfoMessage("");
     setLoading(true);
 
     try {
-      const endpoint = tab === "login" ? "/api/auth/login" : "/api/auth/signup";
-      const payload =
-        tab === "login"
-          ? { email, password }
-          : { email, password, name, phone };
-
-      const res = await fetch(endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        let errStr = "İşlem başarısız oldu.";
-        if (data.error) {
-          errStr = typeof data.error === "string" ? data.error : (data.error.message || JSON.stringify(data.error));
+      if (tab === "login") {
+        await loginWithEmail(email, password);
+        setIsAuthModalOpen(false);
+      } else {
+        const res = await signUpWithEmail({ email, password, name, phone });
+        if (res?.confirmationRequired) {
+          setInfoMessage("Kayıt başarılı! Lütfen e-postanıza gönderilen onay bağlantısına tıklayın.");
+        } else {
+          setIsAuthModalOpen(false);
         }
-        throw new Error(errStr);
       }
-
-      loginUser(data.user, data.token);
-      setIsAuthModalOpen(false);
     } catch (err) {
       setError(err.message || "Bir hata oluştu.");
     } finally {
@@ -148,6 +138,12 @@ export default function AuthModal() {
           {error && (
             <div className="auth-error">
               ⚠️ {error}
+            </div>
+          )}
+
+          {infoMessage && (
+            <div className="auth-info" style={{ background: "#e6fffa", color: "#234e52", padding: "0.75rem", borderRadius: 8, fontSize: "0.88rem", marginBottom: "1rem", border: "1px solid #b2f5ea" }}>
+              ✅ {infoMessage}
             </div>
           )}
 

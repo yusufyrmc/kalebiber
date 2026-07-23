@@ -16,7 +16,7 @@ export default function ProductDetailModal({ product, onClose }) {
     setTimeout(() => setAdded(false), 2000);
   };
 
-  const imgSrc = product.imageUrl || product.image || "/uploads/1781217375828-c05eb8bc.jpg";
+  const imgSrc = product.imageUrl || product.image_url || product.image || "/uploads/1781217375828-c05eb8bc.jpg";
 
   return (
     <div className="product-layer is-open">

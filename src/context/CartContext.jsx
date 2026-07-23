@@ -42,7 +42,7 @@ export function CartProvider({ children }) {
           name: product.name,
           price: product.price,
           unit: product.unit || "kg",
-          imageUrl: product.imageUrl || product.image || "/images/logo-yuvarlak.png",
+          imageUrl: product.imageUrl || product.image_url || product.image || "/images/logo-yuvarlak.png",
           qty,
         },
       ];

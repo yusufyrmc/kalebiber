@@ -6,25 +6,31 @@ const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
 
 // Strip trailing /rest/v1 if accidentally included in env
 const supabaseUrl = rawUrl.replace(/\/rest\/v1\/?$/, "").replace(/\/$/, "");
-const supabaseKey = serviceKey || anonKey;
 
-export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseKey);
+export const isSupabaseConfigured = Boolean(supabaseUrl && anonKey);
 
+// Standard Client-Side Supabase Client (Anon Key with Session Persistence)
 export const supabase = isSupabaseConfigured
-  ? createClient(supabaseUrl, supabaseKey)
-  : null;
-
-// Auth işlemleri (signUp, signIn) her zaman anonKey ile yapılmalıdır (service_role key auth.signUp desteklemez)
-export const supabaseAuth = isSupabaseConfigured
-  ? createClient(supabaseUrl, anonKey || supabaseKey, {
+  ? createClient(supabaseUrl, anonKey, {
       auth: {
-        persistSession: false,
-        autoRefreshToken: false,
-        detectSessionInUrl: false,
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true,
       },
     })
   : null;
 
-if (process.env.NODE_ENV !== "production") {
-  console.log("[Supabase] configured:", isSupabaseConfigured, "| URL:", supabaseUrl || "(missing)");
+// Server-Side / Admin Supabase Client (Service Role Key if available, else Anon Key)
+export const supabaseAdmin = isSupabaseConfigured
+  ? createClient(supabaseUrl, serviceKey || anonKey, {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+      },
+    })
+  : null;
+
+if (typeof window !== "undefined" && process.env.NODE_ENV !== "production") {
+  console.log("[Supabase] Configured:", isSupabaseConfigured, "| URL:", supabaseUrl || "(missing)");
 }
+

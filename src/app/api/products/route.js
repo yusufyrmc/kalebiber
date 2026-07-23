@@ -1,21 +1,32 @@
 import { NextResponse } from "next/server";
 import fs from "fs/promises";
 import path from "path";
-import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import { supabase, supabaseAdmin, isSupabaseConfigured } from "@/lib/supabase";
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 const PRODUCTS_FILE = path.join(process.cwd(), "products.json");
 
 export async function GET() {
   try {
-    if (isSupabaseConfigured && supabase) {
-      const { data, error } = await supabase.from("products").select("*");
-      if (!error && data && data.length > 0) {
+    if (isSupabaseConfigured) {
+      const client = supabaseAdmin || supabase;
+      const { data, error } = await client.from("products").select("*").order("created_at", { ascending: false });
+      if (!error && Array.isArray(data)) {
         // Map Supabase column snake_case format to API format
         const products = data.map(p => ({
           ...p,
-          imageUrl: p.image_url || p.imageUrl,
+          imageUrl: p.image_url || p.imageUrl || "",
+          image_url: p.image_url || p.imageUrl || "",
         }));
-        return NextResponse.json({ success: true, products, source: "supabase" });
+        return NextResponse.json(
+          { success: true, products, source: "supabase" },
+          { headers: { "Cache-Control": "no-store, max-age=0" } }
+        );
+      }
+      if (error) {
+        console.error("Supabase products fetch error:", error);
       }
     }
   } catch (e) {
@@ -48,8 +59,9 @@ export async function POST(req) {
       image_url: body.imageUrl || body.image_url || "",
     };
 
-    if (isSupabaseConfigured && supabase) {
-      const { error } = await supabase.from("products").upsert(newProduct);
+    if (isSupabaseConfigured) {
+      const client = supabaseAdmin || supabase;
+      const { error } = await client.from("products").upsert(newProduct);
       if (error) {
         console.error("Supabase upsert error:", error);
         return NextResponse.json({ error: error.message }, { status: 500 });

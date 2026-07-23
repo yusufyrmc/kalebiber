@@ -9,9 +9,13 @@ export default function AccountPage() {
   const [loadingOrders, setLoadingOrders] = useState(false);
 
   useEffect(() => {
-    if (user?.phone || user?.email) {
+    if (user?.id || user?.phone || user?.email) {
       setLoadingOrders(true);
-      fetch(`/api/orders?phone=${encodeURIComponent(user.phone || "")}`)
+      const params = new URLSearchParams();
+      if (user.id) params.set("userId", user.id);
+      if (user.phone) params.set("phone", user.phone);
+
+      fetch(`/api/orders?${params.toString()}`)
         .then((res) => res.json())
         .then((data) => {
           if (data.orders) setUserOrders(data.orders);

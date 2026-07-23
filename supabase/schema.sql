@@ -59,8 +59,14 @@ begin
     coalesce(new.raw_user_meta_data->>'name', ''),
     coalesce(new.raw_user_meta_data->>'phone', '')
   )
-  on conflict (id) do nothing;
+  on conflict (id) do update set
+    email = excluded.email,
+    name = case when excluded.name <> '' then excluded.name else profiles.name end,
+    phone = case when excluded.phone <> '' then excluded.phone else profiles.phone end;
   return new;
+exception
+  when others then
+    return new;
 end;
 $$;
 

@@ -33,6 +33,7 @@ export default function CheckoutModal({ onClose }) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          userId: user?.id || null,
           customer: {
             name: formData.name,
             phone: formData.phone,

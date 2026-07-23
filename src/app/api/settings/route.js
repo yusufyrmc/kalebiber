@@ -1,14 +1,18 @@
 import { NextResponse } from "next/server";
 import fs from "fs/promises";
 import path from "path";
-import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import { supabase, supabaseAdmin, isSupabaseConfigured } from "@/lib/supabase";
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 const SETTINGS_FILE = path.join(process.cwd(), "data", "settings.json");
 
 export async function GET() {
-  if (isSupabaseConfigured && supabase) {
+  if (isSupabaseConfigured) {
     try {
-      const { data, error } = await supabase.from("settings").select("*").single();
+      const client = supabaseAdmin || supabase;
+      const { data, error } = await client.from("settings").select("*").single();
       if (!error && data) {
         return NextResponse.json({
           storeName: data.store_name,
@@ -54,7 +58,8 @@ export async function POST(req) {
   try {
     const body = await req.json();
 
-    if (isSupabaseConfigured && supabase) {
+    if (isSupabaseConfigured) {
+      const client = supabaseAdmin || supabase;
       const payload = {
         id: "default",
         store_name: body.storeName || "Yarımca Kale Bibercisi",
@@ -80,7 +85,7 @@ export async function POST(req) {
         },
       };
 
-      const { error } = await supabase.from("settings").upsert(payload);
+      const { error } = await client.from("settings").upsert(payload);
       if (error) {
         console.error("Supabase settings update error:", error);
         return NextResponse.json({ success: false, error: error.message }, { status: 500 });

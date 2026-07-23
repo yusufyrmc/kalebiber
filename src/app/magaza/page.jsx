@@ -34,8 +34,9 @@ export default function ShopPage() {
   }, []);
 
   const filteredProducts = products.filter((p) => {
-    const matchesCategory = category === "all" || p.category === category;
-    const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase());
+    if (!p) return false;
+    const matchesCategory = category === "all" || (p.category || "taze") === category;
+    const matchesSearch = (p.name || "").toLowerCase().includes(searchQuery.toLowerCase());
     return matchesCategory && matchesSearch;
   });
 

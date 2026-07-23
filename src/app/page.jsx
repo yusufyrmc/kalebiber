@@ -25,19 +25,19 @@ export default function HomePage() {
   const [reviewMessage, setReviewMessage] = useState("");
 
   useEffect(() => {
-    fetch("/api/settings")
+    fetch("/api/settings", { cache: "no-store" })
       .then((res) => res.json())
       .then((data) => setSettings(data))
       .catch((err) => console.error("Settings load error:", err));
 
-    fetch("/api/products")
+    fetch("/api/products", { cache: "no-store" })
       .then((res) => res.json())
       .then((data) => {
         if (data.products) setProducts(data.products);
       })
       .catch((err) => console.error(err));
 
-    fetch("/api/reviews")
+    fetch("/api/reviews", { cache: "no-store" })
       .then((res) => res.json())
       .then((data) => {
         if (data.reviews) {
@@ -64,8 +64,9 @@ export default function HomePage() {
   };
 
   const filteredProducts = products.filter((p) => {
-    const matchesCategory = category === "all" || p.category === category;
-    const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase());
+    if (!p) return false;
+    const matchesCategory = category === "all" || (p.category || "taze") === category;
+    const matchesSearch = (p.name || "").toLowerCase().includes(searchQuery.toLowerCase());
     return matchesCategory && matchesSearch;
   });
 
@@ -450,50 +451,92 @@ export default function HomePage() {
       {reviewModalOpen && (
         <div className="product-layer is-open">
           <div className="product-layer-backdrop" onClick={() => setReviewModalOpen(false)}></div>
-          <div className="product-layer-dialog" style={{ maxWidth: 500 }}>
-            <button type="button" className="icon-btn product-layer-close" onClick={() => setReviewModalOpen(false)}>
-              ×
+          <div className="product-layer-dialog" style={{ maxWidth: 520, borderRadius: 24, padding: "2rem" }}>
+            <button type="button" className="product-layer-close" onClick={() => setReviewModalOpen(false)}>
+              ✕
             </button>
-            <h3>Yorum Yazın</h3>
-            <p className="fineprint">Deneyiminizi paylaşın, diğer lezzet tutkunlarına yol gösterin.</p>
-            <form onSubmit={handleReviewSubmit} className="review-form">
-              <label className="form-field">
-                <span className="form-field-label">Adınız Soyadınız</span>
-                <input
-                  type="text"
-                  required
-                  className="form-input"
-                  value={reviewAuthor}
-                  onChange={(e) => setReviewAuthor(e.target.value)}
-                />
-              </label>
-              <label className="form-field">
-                <span className="form-field-label">Puanınız</span>
-                <select
-                  className="form-input"
-                  value={reviewRating}
-                  onChange={(e) => setReviewRating(Number(e.target.value))}
-                >
-                  <option value={5}>5 ★★★★★ (Harika)</option>
-                  <option value={4}>4 ★★★★☆ (İyi)</option>
-                  <option value={3}>3 ★★★☆☆ (Orta)</option>
-                  <option value={2}>2 ★★☆☆☆ (Zayıf)</option>
-                  <option value={1}>1 ★☆☆☆☆ (Kötü)</option>
-                </select>
-              </label>
-              <label className="form-field">
-                <span className="form-field-label">Yorumunuz</span>
-                <textarea
-                  rows={4}
-                  required
-                  className="form-input"
-                  value={reviewText}
-                  onChange={(e) => setReviewText(e.target.value)}
-                  placeholder="Ürünün tadı, tazeliği ve teslimat sürecinden bahsedebilirsiniz..."
-                ></textarea>
-              </label>
-              {reviewMessage && <p className="checkout-error">{reviewMessage}</p>}
-              <button type="submit" className="btn btn-primary btn-block">
+            <div style={{ marginBottom: "1.2rem" }}>
+              <span style={{ fontSize: "0.8rem", fontWeight: 700, color: "var(--primary-emerald)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                ✍️ Değerlendirme
+              </span>
+              <h3 style={{ fontSize: "1.5rem", fontWeight: 700, margin: "0.2rem 0 0.4rem", color: "var(--text-main)" }}>
+                Yorum Yazın
+              </h3>
+              <p style={{ fontSize: "0.88rem", color: "var(--text-muted)", margin: 0 }}>
+                Deneyiminizi paylaşın, diğer lezzet tutkunlarına yol gösterin.
+              </p>
+            </div>
+
+            <form onSubmit={handleReviewSubmit} className="review-form review-form--styled">
+              <div className="form-field">
+                <label className="form-field-label">Adınız Soyadınız</label>
+                <div className="form-field-control">
+                  <input
+                    type="text"
+                    required
+                    className="form-input"
+                    placeholder="Örn. Ahmet Yılmaz"
+                    value={reviewAuthor}
+                    onChange={(e) => setReviewAuthor(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div className="form-field">
+                <label className="form-field-label">Puanınız</label>
+                <div className="form-field-control form-field-control--stars" style={{ display: "flex", alignItems: "center" }}>
+                  <div className="star-input star-input--boxed">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <button
+                        key={star}
+                        type="button"
+                        className={star <= reviewRating ? "is-on" : ""}
+                        onClick={() => setReviewRating(star)}
+                        title={`${star} Yıldız`}
+                      >
+                        ★
+                      </button>
+                    ))}
+                  </div>
+                  <span style={{ marginLeft: "0.8rem", fontSize: "0.88rem", fontWeight: 600, color: "#e6a800" }}>
+                    {reviewRating === 5 && "Harika (5/5)"}
+                    {reviewRating === 4 && "İyi (4/5)"}
+                    {reviewRating === 3 && "Orta (3/5)"}
+                    {reviewRating === 2 && "Zayıf (2/5)"}
+                    {reviewRating === 1 && "Kötü (1/5)"}
+                  </span>
+                </div>
+              </div>
+
+              <div className="form-field">
+                <label className="form-field-label">Yorumunuz</label>
+                <div className="form-field-control">
+                  <textarea
+                    rows={4}
+                    required
+                    className="form-textarea"
+                    value={reviewText}
+                    onChange={(e) => setReviewText(e.target.value)}
+                    placeholder="Ürünün tadı, tazeliği ve teslimat sürecinden bahsedebilirsiniz..."
+                  ></textarea>
+                </div>
+              </div>
+
+              {reviewMessage && (
+                <div style={{
+                  padding: "0.75rem 1rem",
+                  borderRadius: "10px",
+                  fontSize: "0.88rem",
+                  fontWeight: 600,
+                  background: reviewMessage.includes("başarıyla") ? "rgba(34, 197, 94, 0.1)" : "rgba(239, 68, 68, 0.1)",
+                  color: reviewMessage.includes("başarıyla") ? "#15803d" : "#b91c1c",
+                  marginTop: "0.5rem"
+                }}>
+                  {reviewMessage}
+                </div>
+              )}
+
+              <button type="submit" className="btn btn-primary btn-block review-submit-btn" style={{ marginTop: "1rem" }}>
                 Yorumu Gönder
               </button>
             </form>

@@ -19,12 +19,17 @@ export async function GET(req) {
   const { searchParams } = new URL(req.url);
   const query = (searchParams.get("query") || searchParams.get("id") || "").trim().toUpperCase();
   const phone = (searchParams.get("phone") || "").trim();
+  const userId = (searchParams.get("userId") || searchParams.get("user_id") || "").trim();
 
   let orders = [];
 
   if (isSupabaseConfigured && supabase) {
     try {
-      const { data, error } = await supabase.from("orders").select("*");
+      let q = supabase.from("orders").select("*");
+      if (userId) {
+        q = q.eq("user_id", userId);
+      }
+      const { data, error } = await q;
       if (!error && data) {
         orders = data.map(o => ({
           ...o,
@@ -41,11 +46,12 @@ export async function GET(req) {
     orders = await getLocalOrders();
   }
 
-  if (query || phone) {
+  if (query || phone || userId) {
     const matched = orders.filter((o) => {
       const idMatch = query && String(o.id || "").toUpperCase().includes(query);
       const phoneMatch = phone && String(o.customer?.phone || o.phone || "").includes(phone);
-      return idMatch || phoneMatch;
+      const userMatch = userId && String(o.user_id || "").toLowerCase() === userId.toLowerCase();
+      return idMatch || phoneMatch || userMatch;
     });
 
     return NextResponse.json({ success: true, orders: matched });
@@ -57,7 +63,7 @@ export async function GET(req) {
 export async function POST(req) {
   try {
     const body = await req.json();
-    const { customer, items, paymentMethod } = body;
+    const { customer, items, paymentMethod, userId } = body;
 
     if (!customer?.name || !customer?.phone || !customer?.address) {
       return NextResponse.json({ error: "Lütfen zorunlu alanları doldurun." }, { status: 400 });
@@ -72,6 +78,7 @@ export async function POST(req) {
 
     const newOrder = {
       id: orderId,
+      user_id: userId || body.user_id || null,
       created_at: body.createdAt || body.created_at || new Date().toISOString(),
       customer,
       items,

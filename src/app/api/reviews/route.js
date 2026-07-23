@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 import fs from "fs/promises";
 import path from "path";
-import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import { supabase, supabaseAdmin, isSupabaseConfigured } from "@/lib/supabase";
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 const DATA_DIR = path.join(process.cwd(), "data");
 const REVIEWS_FILE = path.join(DATA_DIR, "reviews.json");
@@ -18,9 +21,10 @@ async function getReviews() {
 export async function GET() {
   let reviews = [];
 
-  if (isSupabaseConfigured && supabase) {
+  if (isSupabaseConfigured) {
     try {
-      const { data, error } = await supabase.from("reviews").select("*");
+      const client = supabaseAdmin || supabase;
+      const { data, error } = await client.from("reviews").select("*").order("created_at", { ascending: false });
       if (!error && data) {
         reviews = data;
       }
@@ -73,8 +77,9 @@ export async function POST(req) {
       approved: true,
     };
 
-    if (isSupabaseConfigured && supabase) {
-      const { error } = await supabase.from("reviews").insert(newReview);
+    if (isSupabaseConfigured) {
+      const client = supabaseAdmin || supabase;
+      const { error } = await client.from("reviews").insert(newReview);
       if (error) {
         console.error("Supabase review error:", error);
         return NextResponse.json({ error: error.message }, { status: 500 });
