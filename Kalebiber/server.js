@@ -1183,13 +1183,22 @@ app.post("/api/orders", requireUser, async (req, res) => {
 
 /* ——— Admin ——— */
 app.post("/api/admin/upload", requireAdmin, (req, res) => {
-  imageUpload.single("file")(req, res, (err) => {
+  imageUpload.single("file")(req, res, async (err) => {
     if (err) {
       const msg = err.message || "Yükleme başarısız";
       return res.status(err.code === "LIMIT_FILE_SIZE" ? 413 : 400).json({ error: msg });
     }
     if (!req.file) return res.status(400).json({ error: "Dosya seçilmedi" });
-    res.status(201).json({ ok: true, url: `/uploads/${req.file.filename}` });
+    let url = `/uploads/${req.file.filename}`;
+    if (supabaseServer.isSupabaseEnabled()) {
+      const sbUrl = await supabaseServer.uploadToSupabaseStorage(
+        req.file.path,
+        req.file.filename,
+        req.file.mimetype
+      );
+      if (sbUrl) url = sbUrl;
+    }
+    res.status(201).json({ ok: true, url });
   });
 });
 

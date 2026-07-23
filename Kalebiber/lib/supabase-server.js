@@ -1,7 +1,8 @@
 /**
- * Sunucu tarafı Supabase — JWT doğrulama, profil tablosu ve DB CRUD işlemleri
+ * Sunucu tarafı Supabase — JWT doğrulama, profil tablosu, DB ve Storage CRUD işlemleri
  */
 const { createClient } = require("@supabase/supabase-js");
+const fsp = require("fs/promises");
 
 const SUPABASE_URL = String(process.env.SUPABASE_URL || "")
   .trim()
@@ -365,7 +366,7 @@ async function saveFinanceToDb(t) {
     amount: t.amount,
     description: t.description || "",
     date: t.date,
-    order_id: t.orderId || null,
+    order_id: t.orderId || "",
     created_at: t.createdAt || new Date().toISOString(),
     updated_at: new Date().toISOString(),
   };
@@ -378,6 +379,29 @@ async function deleteFinanceFromDb(id) {
   if (!sb) return;
   const { error } = await sb.from("finance_transactions").delete().eq("id", id);
   if (error) console.error("Supabase finance delete error:", error.message);
+}
+
+async function uploadToSupabaseStorage(filePath, fileName, mimeType) {
+  const sb = getAdmin();
+  if (!sb) return null;
+  try {
+    const fileBuffer = await fsp.readFile(filePath);
+    const { data, error } = await sb.storage
+      .from("uploads")
+      .upload(fileName, fileBuffer, {
+        contentType: mimeType || "image/jpeg",
+        upsert: true,
+      });
+    if (error) {
+      console.error("Supabase Storage upload error:", error.message);
+      return null;
+    }
+    const { data: publicData } = sb.storage.from("uploads").getPublicUrl(fileName);
+    return publicData?.publicUrl || null;
+  } catch (e) {
+    console.error("Supabase Storage file read error:", e.message);
+    return null;
+  }
 }
 
 module.exports = {
@@ -406,4 +430,5 @@ module.exports = {
   fetchFinanceFromDb,
   saveFinanceToDb,
   deleteFinanceFromDb,
+  uploadToSupabaseStorage,
 };

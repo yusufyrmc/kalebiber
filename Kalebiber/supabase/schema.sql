@@ -170,7 +170,7 @@ create table if not exists public.finance_transactions (
   amount numeric(10,2) not null default 0 check (amount >= 0),
   description text default '',
   date date not null default current_date,
-  order_id text references public.orders(id) on delete set null,
+  order_id text default '',
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -321,3 +321,21 @@ values
 ('TX-MPD4HNBN', 'expense', 'malzeme', 1000, 'damlama hortumu', '2026-05-19', ''),
 ('TX-MPD4FWSS', 'expense', 'malzeme', 630, 'mazot', '2026-05-19', '')
 on conflict (id) do nothing;
+
+-- ==============================================================================
+-- SUPABASE STORAGE (GÖRSEL VE DOSYA YÜKLEME KOVASI VE ERİŞİM İZİNLERİ)
+-- ==============================================================================
+insert into storage.buckets (id, name, public)
+values ('uploads', 'uploads', true)
+on conflict (id) do nothing;
+
+drop policy if exists "Public Read Uploads" on storage.objects;
+create policy "Public Read Uploads"
+  on storage.objects for select
+  using (bucket_id = 'uploads');
+
+drop policy if exists "Service Role Uploads" on storage.objects;
+create policy "Service Role Uploads"
+  on storage.objects for all
+  using (bucket_id = 'uploads');
+
