@@ -1,23 +1,18 @@
 import { NextResponse } from "next/server";
 import fs from "fs/promises";
 import path from "path";
+import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 
 const DATA_DIR = path.join(process.cwd(), "data");
 const USERS_FILE = path.join(DATA_DIR, "users.json");
 
-async function getUsers() {
+async function getLocalUsers() {
   try {
-    await fs.mkdir(DATA_DIR, { recursive: true });
     const raw = await fs.readFile(USERS_FILE, "utf8");
     return JSON.parse(raw);
   } catch {
     return [];
   }
-}
-
-async function saveUsers(users) {
-  await fs.mkdir(DATA_DIR, { recursive: true });
-  await fs.writeFile(USERS_FILE, JSON.stringify(users, null, 2), "utf8");
 }
 
 export async function POST(req) {
@@ -28,7 +23,40 @@ export async function POST(req) {
       return NextResponse.json({ error: "Lütfen ad, e-posta ve şifre girin." }, { status: 400 });
     }
 
-    const users = await getUsers();
+    // 1. Supabase Auth + Profiles Entegrasyonu
+    if (isSupabaseConfigured && supabase) {
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: email.trim(),
+        password,
+        options: {
+          data: {
+            name: name.trim(),
+            phone: phone ? phone.trim() : "",
+          },
+        },
+      });
+
+      if (authError) {
+        return NextResponse.json({ error: authError.message }, { status: 400 });
+      }
+
+      const user = authData.user;
+      const safeUser = {
+        id: user ? user.id : `USR-${Date.now()}`,
+        email: email.trim(),
+        name: name.trim(),
+        phone: phone ? phone.trim() : "",
+        address: "",
+        city: "",
+      };
+
+      const token = authData.session?.access_token || `token-${safeUser.id}-${Date.now()}`;
+
+      return NextResponse.json({ success: true, user: safeUser, token });
+    }
+
+    // 2. Vercel / Local Fallback
+    const users = await getLocalUsers();
     const existing = users.find((u) => u.email.toLowerCase() === email.toLowerCase());
 
     if (existing) {
@@ -46,8 +74,13 @@ export async function POST(req) {
       createdAt: new Date().toISOString(),
     };
 
-    users.push(newUser);
-    await saveUsers(users);
+    try {
+      users.push(newUser);
+      await fs.mkdir(DATA_DIR, { recursive: true });
+      await fs.writeFile(USERS_FILE, JSON.stringify(users, null, 2), "utf8");
+    } catch (e) {
+      console.warn("Local JSON write skipped/failed:", e.message);
+    }
 
     const safeUser = {
       id: newUser.id,
