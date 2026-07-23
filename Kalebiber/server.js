@@ -124,6 +124,10 @@ function queueWrite(fn) {
 }
 
 async function readSettings() {
+  if (supabaseServer.isSupabaseEnabled()) {
+    const dbSettings = await supabaseServer.fetchSettingsFromDb();
+    if (dbSettings) return normalizeSettings(dbSettings);
+  }
   try {
     const raw = await fsp.readFile(SETTINGS_FILE, "utf8");
     return normalizeSettings(JSON.parse(raw));
@@ -134,6 +138,9 @@ async function readSettings() {
 
 function queueWriteSettings(data) {
   return queueWrite(async () => {
+    if (supabaseServer.isSupabaseEnabled()) {
+      await supabaseServer.saveSettingsToDb(data);
+    }
     await fsp.mkdir(DATA_DIR, { recursive: true });
     await fsp.writeFile(SETTINGS_FILE, JSON.stringify(data, null, 2), "utf8");
   });
@@ -160,6 +167,10 @@ function normalizeTransaction(raw, existingId) {
 }
 
 async function readFinance() {
+  if (supabaseServer.isSupabaseEnabled()) {
+    const dbFinance = await supabaseServer.fetchFinanceFromDb();
+    if (dbFinance) return dbFinance.map((t) => normalizeTransaction(t, t.id));
+  }
   try {
     const raw = await fsp.readFile(FINANCE_FILE, "utf8");
     const data = JSON.parse(raw);
@@ -172,6 +183,11 @@ async function readFinance() {
 
 function queueWriteFinance(transactions) {
   return queueWrite(async () => {
+    if (supabaseServer.isSupabaseEnabled()) {
+      for (const t of transactions) {
+        await supabaseServer.saveFinanceToDb(t);
+      }
+    }
     await fsp.mkdir(DATA_DIR, { recursive: true });
     await fsp.writeFile(FINANCE_FILE, JSON.stringify({ transactions }, null, 2), "utf8");
   });
@@ -210,6 +226,10 @@ function enrichProduct(p) {
 }
 
 async function readProducts() {
+  if (supabaseServer.isSupabaseEnabled()) {
+    const dbList = await supabaseServer.fetchProductsFromDb();
+    if (dbList && dbList.length > 0) return dbList.map(enrichProduct);
+  }
   const raw = await fsp.readFile(PRODUCTS_FILE, "utf8");
   const list = JSON.parse(raw);
   if (!Array.isArray(list)) throw new Error("products.json geçersiz");
@@ -218,11 +238,20 @@ async function readProducts() {
 
 function queueWriteProducts(list) {
   return queueWrite(async () => {
+    if (supabaseServer.isSupabaseEnabled()) {
+      for (const p of list) {
+        await supabaseServer.saveProductToDb(p);
+      }
+    }
     await fsp.writeFile(PRODUCTS_FILE, JSON.stringify(list, null, 2), "utf8");
   });
 }
 
 async function readOrders() {
+  if (supabaseServer.isSupabaseEnabled()) {
+    const dbOrders = await supabaseServer.fetchOrdersFromDb();
+    if (dbOrders) return dbOrders;
+  }
   try {
     const raw = await fsp.readFile(ORDERS_FILE, "utf8");
     const data = JSON.parse(raw);
@@ -383,12 +412,21 @@ function orderForAccount(o) {
 
 function queueWriteOrders(orders) {
   return queueWrite(async () => {
+    if (supabaseServer.isSupabaseEnabled()) {
+      for (const o of orders) {
+        await supabaseServer.saveOrderToDb(o);
+      }
+    }
     await fsp.mkdir(DATA_DIR, { recursive: true });
     await fsp.writeFile(ORDERS_FILE, JSON.stringify(orders, null, 2), "utf8");
   });
 }
 
 async function readReviews() {
+  if (supabaseServer.isSupabaseEnabled()) {
+    const dbReviews = await supabaseServer.fetchReviewsFromDb();
+    if (dbReviews) return dbReviews;
+  }
   try {
     const raw = await fsp.readFile(REVIEWS_FILE, "utf8");
     const data = JSON.parse(raw);
@@ -400,6 +438,11 @@ async function readReviews() {
 
 function queueWriteReviews(list) {
   return queueWrite(async () => {
+    if (supabaseServer.isSupabaseEnabled()) {
+      for (const r of list) {
+        await supabaseServer.saveReviewToDb(r);
+      }
+    }
     await fsp.mkdir(DATA_DIR, { recursive: true });
     await fsp.writeFile(REVIEWS_FILE, JSON.stringify(list, null, 2), "utf8");
   });
@@ -1231,6 +1274,9 @@ app.delete("/api/admin/products/:id", requireAdmin, async (req, res) => {
     const list = await readProducts();
     const next = list.filter((x) => x.id !== req.params.id);
     if (next.length === list.length) return res.status(404).json({ error: "Ürün bulunamadı" });
+    if (supabaseServer.isSupabaseEnabled()) {
+      await supabaseServer.deleteProductFromDb(req.params.id);
+    }
     await queueWriteProducts(next);
     res.json({ ok: true });
   } catch (e) {
@@ -1333,6 +1379,9 @@ app.delete("/api/admin/reviews/:id", requireAdmin, async (req, res) => {
     const list = await readReviews();
     const next = list.filter((r) => r.id !== req.params.id);
     if (next.length === list.length) return res.status(404).json({ error: "Yorum bulunamadı" });
+    if (supabaseServer.isSupabaseEnabled()) {
+      await supabaseServer.deleteReviewFromDb(req.params.id);
+    }
     await queueWriteReviews(next);
     res.json({ ok: true });
   } catch (e) {
@@ -1415,6 +1464,9 @@ app.delete("/api/admin/orders/:id", requireAdmin, async (req, res) => {
     const orders = await readOrders();
     const next = orders.filter((o) => o.id !== req.params.id);
     if (next.length === orders.length) return res.status(404).json({ error: "Sipariş yok" });
+    if (supabaseServer.isSupabaseEnabled()) {
+      await supabaseServer.deleteOrderFromDb(req.params.id);
+    }
     await queueWriteOrders(next);
     res.json({ ok: true });
   } catch (e) {
@@ -1474,6 +1526,9 @@ app.delete("/api/admin/finance/:id", requireAdmin, async (req, res) => {
     const list = await readFinance();
     const next = list.filter((t) => t.id !== req.params.id);
     if (next.length === list.length) return res.status(404).json({ error: "Kayıt bulunamadı" });
+    if (supabaseServer.isSupabaseEnabled()) {
+      await supabaseServer.deleteFinanceFromDb(req.params.id);
+    }
     await queueWriteFinance(next);
     res.json({ ok: true });
   } catch (e) {
