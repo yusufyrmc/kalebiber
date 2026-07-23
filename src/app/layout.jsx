@@ -1,7 +1,7 @@
 import "./globals.css";
-import "../../styles.css";
-import "../../admin-panel.css";
-import "../../shop.css";
+import "./styles.css";
+import "./admin-panel.css";
+import "./shop.css";
 import { CartProvider } from "@/context/CartContext";
 import { AuthProvider } from "@/context/AuthContext";
 import NavbarWrapper from "@/components/NavbarWrapper";

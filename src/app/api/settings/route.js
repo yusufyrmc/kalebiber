@@ -30,3 +30,16 @@ export async function GET() {
     });
   }
 }
+
+export async function POST(req) {
+  try {
+    const body = await req.json();
+    const dataDir = path.dirname(SETTINGS_FILE);
+    await fs.mkdir(dataDir, { recursive: true });
+    await fs.writeFile(SETTINGS_FILE, JSON.stringify(body, null, 2), "utf8");
+    return NextResponse.json({ success: true, settings: body });
+  } catch (error) {
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  }
+}
+

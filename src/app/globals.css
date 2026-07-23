@@ -1,6 +1,6 @@
-@import "../../styles.css";
-@import "../../shop.css";
-@import "../../admin-panel.css";
+@import "./styles.css";
+@import "./shop.css";
+@import "./admin-panel.css";
 
 /* Premium UI/UX Modern Redesign Styles */
 
@@ -712,6 +712,7 @@ body {
   color: var(--text-main);
   display: -webkit-box;
   -webkit-line-clamp: 3;
+  line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
