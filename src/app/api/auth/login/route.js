@@ -31,7 +31,8 @@ export async function POST(req) {
       });
 
       if (authError) {
-        return NextResponse.json({ error: authError.message }, { status: 401 });
+        const errorMsg = typeof authError === "string" ? authError : (authError.message || JSON.stringify(authError));
+        return NextResponse.json({ error: errorMsg }, { status: 401 });
       }
 
       const user = authData.user;

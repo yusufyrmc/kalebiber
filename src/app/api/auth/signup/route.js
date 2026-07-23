@@ -37,7 +37,8 @@ export async function POST(req) {
       });
 
       if (authError) {
-        return NextResponse.json({ error: authError.message }, { status: 400 });
+        const errorMsg = typeof authError === "string" ? authError : (authError.message || JSON.stringify(authError));
+        return NextResponse.json({ error: errorMsg }, { status: 400 });
       }
 
       const user = authData.user;
@@ -95,6 +96,7 @@ export async function POST(req) {
 
     return NextResponse.json({ success: true, user: safeUser, token });
   } catch (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    const msg = error?.message || (typeof error === "string" ? error : JSON.stringify(error));
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
