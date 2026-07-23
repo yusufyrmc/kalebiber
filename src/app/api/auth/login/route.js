@@ -53,8 +53,8 @@ export async function POST(req) {
 
           const token = authData.session?.access_token || `token-${user.id}-${Date.now()}`;
           return NextResponse.json({ success: true, user: safeUser, token });
-        } else if (authError && authError.status && authError.status !== 500) {
-          return NextResponse.json({ error: authError.message || "E-posta veya şifre hatalı." }, { status: 401 });
+        } else if (authError) {
+          console.warn("Supabase Auth login failed, trying local fallback:", authError.message);
         }
       } catch (e) {
         console.warn("Supabase Login exception, switching to local login:", e.message);
