@@ -183,7 +183,7 @@ create trigger update_finance_updated_at
 alter table public.finance_transactions enable row level security;
 
 drop policy if exists "finance_service_role_all" on public.finance_transactions;
-create policy "finance_service_role_all" on public.finance_transactions for all using (true);
+create policy "finance_service_role_all" on public.finance_transactions for all using (true) with check (true);
 
 
 -- 7. MAĞAZA VE SİTE AYARLARI TABLOSU (data/settings.json karşılığı)

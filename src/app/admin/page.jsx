@@ -110,7 +110,20 @@ export default function AdminPage() {
   // ── Save helpers ──────────────────────────────────────────
   const saveSettings = async (extra = {}) => {
     const body = { ...settings, ...extra };
-    await fetch("/api/settings", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    try {
+      const res = await fetch("/api/settings", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      const data = await res.json();
+      if (data.success) {
+        setSettings(body);
+        return true;
+      } else {
+        alert("Ayar kaydedilemedi: " + (data.error || "Bilinmeyen hata"));
+        return false;
+      }
+    } catch (e) {
+      alert("Hata oluştu: " + e.message);
+      return false;
+    }
   };
 
   const saveHero = async (e) => {
@@ -140,7 +153,12 @@ export default function AdminPage() {
 
   const openEditProduct = (p) => {
     setEditingProduct(p);
-    setProductForm({ ...p, price: String(p.price), stock: String(p.stock || "") });
+    setProductForm({
+      ...p,
+      price: String(p.price),
+      stock: String(p.stock || ""),
+      imageUrl: p.imageUrl || p.image_url || "",
+    });
     setProductModal(true);
   };
 
@@ -181,6 +199,8 @@ export default function AdminPage() {
       if (data.success) {
         await loadFinance();
         setFinanceForm(f => ({ ...f, amount: "", description: "", orderId: "" }));
+      } else {
+        alert("Kayıt eklenemedi: " + (data.error || "Bilinmeyen hata"));
       }
     } catch (err) {
       alert("Kayıt eklenemedi: " + err.message);
@@ -370,7 +390,38 @@ export default function AdminPage() {
                   <p><strong>Telefon:</strong> {selectedOrder.customer?.phone}</p>
                   <p><strong>Adres:</strong> {selectedOrder.customer?.address}</p>
                   <p><strong>Tutar:</strong> {selectedOrder.totalAmount} ₺</p>
-                  <p><strong>Durum:</strong> {selectedOrder.status}</p>
+                  <p>
+                    <strong>Durum:</strong>{" "}
+                    <select
+                      value={selectedOrder.status}
+                      onChange={async (e) => {
+                        const newStatus = e.target.value;
+                        setSelectedOrder({ ...selectedOrder, status: newStatus });
+                        try {
+                          await fetch("/api/orders", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                              ...selectedOrder,
+                              status: newStatus,
+                              customer: selectedOrder.customer,
+                              items: selectedOrder.items,
+                            }),
+                          });
+                          loadAll();
+                        } catch (err) {
+                          alert("Durum güncellenemedi.");
+                        }
+                      }}
+                      style={{ padding: "0.3rem 0.6rem", borderRadius: 8, border: "1px solid var(--hairline)", marginLeft: "0.5rem" }}
+                    >
+                      <option value="yeni">Yeni</option>
+                      <option value="hazirlaniyor">Hazırlanıyor</option>
+                      <option value="kargoda">Kargoda</option>
+                      <option value="teslim_edildi">Teslim edildi</option>
+                      <option value="iptal">İptal</option>
+                    </select>
+                  </p>
                   <h4>Ürünler</h4>
                   {(selectedOrder.items || []).map((item, i) => (
                     <p key={i}>{item.name} × {item.qty} — {item.price * item.qty} ₺</p>
@@ -401,7 +452,7 @@ export default function AdminPage() {
                 <tbody>
                   {products.map(p => (
                     <tr key={p.id} style={{ borderBottom: "1px solid var(--hairline)" }}>
-                      <td style={{ padding: "0.6rem 1rem" }}><img src={p.imageUrl || "/images/logo-yuvarlak.png"} alt={p.name} style={{ width: 44, height: 44, borderRadius: 8, objectFit: "cover" }} /></td>
+                      <td style={{ padding: "0.6rem 1rem" }}><img src={p.imageUrl || p.image_url || "/images/logo-yuvarlak.png"} alt={p.name} style={{ width: 44, height: 44, borderRadius: 8, objectFit: "cover" }} /></td>
                       <td style={{ padding: "0.6rem 1rem", fontWeight: 600 }}>{p.name}</td>
                       <td style={{ padding: "0.6rem 1rem", fontWeight: 700, color: "var(--leaf)" }}>{p.price} ₺ / {p.unit}</td>
                       <td style={{ padding: "0.6rem 1rem" }}>{p.stock ?? "—"}</td>

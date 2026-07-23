@@ -66,7 +66,7 @@ export async function POST(req) {
     };
 
     if (isSupabaseConfigured && supabase) {
-      const { error } = await supabase.from("finance_transactions").upsert(entry);
+      const { data: insertedData, error } = await supabase.from("finance_transactions").upsert(entry).select();
       if (error) {
         console.error("Supabase finance upsert error:", error);
         return NextResponse.json({ success: false, error: error.message }, { status: 500 });

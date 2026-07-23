@@ -7,7 +7,7 @@ export default function ProductCard({ product, onOpenDetail }) {
   const { addToCart } = useCart();
   const [added, setAdded] = useState(false);
 
-  const imgSrc = product.imageUrl || product.image || "/uploads/1781217375828-c05eb8bc.jpg";
+  const imgSrc = product.imageUrl || product.image_url || product.image || "/uploads/1781217375828-c05eb8bc.jpg";
 
   const handleAdd = (e) => {
     e.stopPropagation();

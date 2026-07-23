@@ -67,21 +67,21 @@ export async function POST(req) {
       return NextResponse.json({ error: "Sepetiniz boş." }, { status: 400 });
     }
 
-    const orderId = `KB-${Math.floor(100000 + Math.random() * 900000)}`;
-    const totalAmount = items.reduce((sum, i) => sum + (Number(i.price) || 0) * (Number(i.qty) || 1), 0);
+    const orderId = body.id || `KB-${Math.floor(100000 + Math.random() * 900000)}`;
+    const totalAmount = body.totalAmount || (Array.isArray(items) ? items.reduce((sum, i) => sum + (Number(i.price) || 0) * (Number(i.qty) || 1), 0) : 0);
 
     const newOrder = {
       id: orderId,
-      created_at: new Date().toISOString(),
+      created_at: body.createdAt || body.created_at || new Date().toISOString(),
       customer,
       items,
       total: totalAmount,
-      payment_method: paymentMethod || "kapida",
-      status: "yeni",
+      payment_method: paymentMethod || body.payment_method || "kapida",
+      status: body.status || "yeni",
     };
 
     if (isSupabaseConfigured && supabase) {
-      const { error } = await supabase.from("orders").insert(newOrder);
+      const { error } = await supabase.from("orders").upsert(newOrder);
       if (error) {
         console.error("Supabase order insert error:", error);
         return NextResponse.json({ error: error.message }, { status: 500 });
