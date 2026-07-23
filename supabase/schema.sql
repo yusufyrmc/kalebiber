@@ -327,15 +327,28 @@ on conflict (id) do nothing;
 -- ==============================================================================
 insert into storage.buckets (id, name, public)
 values ('uploads', 'uploads', true)
-on conflict (id) do nothing;
+on conflict (id) do update set public = true;
 
+-- Herkes okuyabilir (public bucket)
 drop policy if exists "Public Read Uploads" on storage.objects;
 create policy "Public Read Uploads"
   on storage.objects for select
   using (bucket_id = 'uploads');
 
-drop policy if exists "Service Role Uploads" on storage.objects;
-create policy "Service Role Uploads"
-  on storage.objects for all
+-- Herkes yükleyebilir (admin API'si zaten sunucu taraflı kontrol eder)
+drop policy if exists "Public Insert Uploads" on storage.objects;
+create policy "Public Insert Uploads"
+  on storage.objects for insert
+  with check (bucket_id = 'uploads');
+
+-- Herkes silebilir / güncelleyebilir (admin kullanır)
+drop policy if exists "Public Update Uploads" on storage.objects;
+create policy "Public Update Uploads"
+  on storage.objects for update
+  using (bucket_id = 'uploads');
+
+drop policy if exists "Public Delete Uploads" on storage.objects;
+create policy "Public Delete Uploads"
+  on storage.objects for delete
   using (bucket_id = 'uploads');
 
