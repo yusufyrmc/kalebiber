@@ -1592,36 +1592,18 @@ app.get("/api/admin/finance/export", requireAdmin, async (req, res) => {
 async function sendHtmlWithApiBase(filename, req, res, next) {
   try {
     let file = filename;
-    const possiblePaths = [
-      path.join(ROOT, file),
-      path.join(process.cwd(), file),
-      path.join(process.cwd(), "Kalebiber", file),
-      path.join(__dirname, file),
-    ];
-    let filePath = "";
-    for (const p of possiblePaths) {
-      try {
-        await fsp.access(p);
-        filePath = p;
-        break;
-      } catch {}
-    }
-    if (!filePath && filename === "index.html") {
-      for (const p of possiblePaths.map(x => x.replace("index.html", "mağza.html"))) {
-        try {
-          await fsp.access(p);
-          filePath = p;
-          break;
-        } catch {}
+    let filePath = path.join(ROOT, file);
+    try {
+      await fsp.access(filePath);
+    } catch {
+      if (filename === "index.html") {
+        file = "mağza.html";
+        filePath = path.join(ROOT, file);
       }
-    }
-    if (!filePath) {
-      return res.status(404).send(`Sayfa bulunamadı (${filename})`);
     }
     let html = await fsp.readFile(filePath, "utf8");
     const host = req.get("host") || `127.0.0.1:${PORT}`;
-    const proto = req.get("x-forwarded-proto") || req.protocol || "https";
-    const base = `${proto}://${host}`;
+    const base = `${req.protocol}://${host}`;
     const inject = [];
     if (!html.includes("__KALE_API_BASE__")) {
       inject.push(`window.__KALE_API_BASE__=${JSON.stringify(base)}`);
@@ -1642,8 +1624,7 @@ async function sendHtmlWithApiBase(filename, req, res, next) {
     res.setHeader("Cache-Control", "no-cache");
     res.type("html").send(html);
   } catch (e) {
-    console.error("sendHtml error:", e.message);
-    res.status(500).send("Sunucu hatası: " + e.message);
+    next(e);
   }
 }
 
@@ -1659,18 +1640,12 @@ app.get("/giris", (_req, res) => res.redirect(302, "/hesap.html?tab=giris"));
 app.use("/uploads", express.static(UPLOAD_DIR, { maxAge: "7d" }));
 app.use(express.static(ROOT));
 
-if (process.env.VERCEL) {
-  module.exports = app;
-} else {
-  app.listen(PORT, () => {
-    console.log(`Kale Biber: http://localhost:${PORT}`);
-    console.log(`Yönetim:  http://localhost:${PORT}/admin`);
-    if (supabaseServer.isSupabaseEnabled()) {
-      console.log("Kimlik doğrulama: Supabase");
-    } else {
-      console.warn("Supabase kapalı — .env içine SUPABASE_URL ve SUPABASE_SERVICE_ROLE_KEY ekleyin (supabase/schema.sql çalıştırın).");
-    }
-  });
-}
-
-module.exports = app;
+app.listen(PORT, () => {
+  console.log(`Kale Biber: http://localhost:${PORT}`);
+  console.log(`Yönetim:  http://localhost:${PORT}/admin`);
+  if (supabaseServer.isSupabaseEnabled()) {
+    console.log("Kimlik doğrulama: Supabase");
+  } else {
+    console.warn("Supabase kapalı — .env içine SUPABASE_URL ve SUPABASE_SERVICE_ROLE_KEY ekleyin (supabase/schema.sql çalıştırın).");
+  }
+});
