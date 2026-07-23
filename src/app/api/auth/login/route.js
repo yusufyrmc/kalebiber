@@ -31,7 +31,7 @@ export async function POST(req) {
       });
 
       if (authError) {
-        const errorMsg = typeof authError === "string" ? authError : (authError.message || JSON.stringify(authError));
+        const errorMsg = authError.message || (typeof authError === "string" ? authError : "E-posta veya şifre hatalı.");
         return NextResponse.json({ error: errorMsg }, { status: 401 });
       }
 

@@ -37,7 +37,7 @@ export async function POST(req) {
       });
 
       if (authError) {
-        const errorMsg = typeof authError === "string" ? authError : (authError.message || JSON.stringify(authError));
+        const errorMsg = authError.message || (typeof authError === "string" ? authError : "Kayıt işlemi başarısız.");
         return NextResponse.json({ error: errorMsg }, { status: 400 });
       }
 

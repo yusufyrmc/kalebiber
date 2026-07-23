@@ -36,12 +36,19 @@ export default function AuthModal() {
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "İşlem başarısız oldu.");
+      if (!res.ok) {
+        let errStr = "İşlem başarısız oldu.";
+        if (data.error) {
+          if (typeof data.error === "string") errStr = data.error;
+          else if (typeof data.error === "object") errStr = data.error.message || JSON.stringify(data.error);
+        }
+        throw new Error(errStr === "{}" ? "Giriş/Kayıt bilgileri hatalı veya Supabase ayarları eksik." : errStr);
+      }
 
       loginUser(data.user, data.token);
       setIsAuthModalOpen(false);
     } catch (err) {
-      setError(err.message);
+      setError(err.message || "Bir hata oluştu.");
     } finally {
       setLoading(false);
     }
