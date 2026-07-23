@@ -2,14 +2,17 @@
   "version": 2,
   "builds": [
     {
-      "src": "Kalebiber/server.js",
-      "use": "@vercel/node"
+      "src": "Kalebiber/api/index.js",
+      "use": "@vercel/node",
+      "config": {
+        "includeFiles": ["Kalebiber/*.html", "Kalebiber/data/*.json", "Kalebiber/products.json"]
+      }
     }
   ],
   "routes": [
     {
       "src": "/(.*)",
-      "dest": "Kalebiber/server.js"
+      "dest": "Kalebiber/api/index.js"
     }
   ]
 }
