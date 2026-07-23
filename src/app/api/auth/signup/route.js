@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import fs from "fs/promises";
 import path from "path";
-import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import { supabase, supabaseAuth, isSupabaseConfigured } from "@/lib/supabase";
 
 const DATA_DIR = path.join(process.cwd(), "data");
 const USERS_FILE = path.join(DATA_DIR, "users.json");
@@ -9,7 +9,8 @@ const USERS_FILE = path.join(DATA_DIR, "users.json");
 async function getLocalUsers() {
   try {
     const raw = await fs.readFile(USERS_FILE, "utf8");
-    return JSON.parse(raw);
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
   } catch {
     return [];
   }
@@ -24,41 +25,43 @@ export async function POST(req) {
     }
 
     // 1. Supabase Auth + Profiles Entegrasyonu
-    if (isSupabaseConfigured && supabase) {
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: email.trim(),
-        password,
-        options: {
-          data: {
+    if (isSupabaseConfigured && supabaseAuth) {
+      try {
+        const { data: authData, error: authError } = await supabaseAuth.auth.signUp({
+          email: email.trim(),
+          password,
+          options: {
+            data: {
+              name: name.trim(),
+              phone: phone ? phone.trim() : "",
+            },
+          },
+        });
+
+        if (!authError && authData?.user) {
+          const user = authData.user;
+          const safeUser = {
+            id: user.id,
+            email: email.trim(),
             name: name.trim(),
             phone: phone ? phone.trim() : "",
-          },
-        },
-      });
-
-      if (authError) {
-        const errorMsg = authError.message || (typeof authError === "string" ? authError : "Kayıt işlemi başarısız.");
-        return NextResponse.json({ error: errorMsg }, { status: 400 });
+            address: "",
+            city: "",
+          };
+          const token = authData.session?.access_token || `token-${safeUser.id}-${Date.now()}`;
+          return NextResponse.json({ success: true, user: safeUser, token });
+        } else if (authError && authError.status && authError.status !== 500) {
+          return NextResponse.json({ error: authError.message || "Kayıt işlemi başarısız." }, { status: 400 });
+        }
+      } catch (e) {
+        console.warn("Supabase Auth exception, switching to local registration:", e.message);
       }
-
-      const user = authData.user;
-      const safeUser = {
-        id: user ? user.id : `USR-${Date.now()}`,
-        email: email.trim(),
-        name: name.trim(),
-        phone: phone ? phone.trim() : "",
-        address: "",
-        city: "",
-      };
-
-      const token = authData.session?.access_token || `token-${safeUser.id}-${Date.now()}`;
-
-      return NextResponse.json({ success: true, user: safeUser, token });
     }
 
     // 2. Vercel / Local Fallback
     const users = await getLocalUsers();
-    const existing = users.find((u) => u.email.toLowerCase() === email.toLowerCase());
+    const safeUsersList = Array.isArray(users) ? users : [];
+    const existing = safeUsersList.find((u) => u && u.email && u.email.toLowerCase() === email.toLowerCase());
 
     if (existing) {
       return NextResponse.json({ error: "Bu e-posta adresi zaten kayıtlı." }, { status: 400 });

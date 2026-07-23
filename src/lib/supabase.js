@@ -14,6 +14,17 @@ export const supabase = isSupabaseConfigured
   ? createClient(supabaseUrl, supabaseKey)
   : null;
 
+// Auth işlemleri (signUp, signIn) her zaman anonKey ile yapılmalıdır (service_role key auth.signUp desteklemez)
+export const supabaseAuth = isSupabaseConfigured
+  ? createClient(supabaseUrl, anonKey || supabaseKey, {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+        detectSessionInUrl: false,
+      },
+    })
+  : null;
+
 if (process.env.NODE_ENV !== "production") {
   console.log("[Supabase] configured:", isSupabaseConfigured, "| URL:", supabaseUrl || "(missing)");
 }

@@ -39,10 +39,9 @@ export default function AuthModal() {
       if (!res.ok) {
         let errStr = "İşlem başarısız oldu.";
         if (data.error) {
-          if (typeof data.error === "string") errStr = data.error;
-          else if (typeof data.error === "object") errStr = data.error.message || JSON.stringify(data.error);
+          errStr = typeof data.error === "string" ? data.error : (data.error.message || JSON.stringify(data.error));
         }
-        throw new Error(errStr === "{}" ? "Giriş/Kayıt bilgileri hatalı veya Supabase ayarları eksik." : errStr);
+        throw new Error(errStr);
       }
 
       loginUser(data.user, data.token);
