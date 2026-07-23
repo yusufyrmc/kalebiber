@@ -8,17 +8,11 @@ const ORDERS_FILE = path.join(DATA_DIR, "orders.json");
 
 async function getLocalOrders() {
   try {
-    await fs.mkdir(DATA_DIR, { recursive: true });
     const raw = await fs.readFile(ORDERS_FILE, "utf8");
     return JSON.parse(raw);
   } catch {
     return [];
   }
-}
-
-async function saveLocalOrders(orders) {
-  await fs.mkdir(DATA_DIR, { recursive: true });
-  await fs.writeFile(ORDERS_FILE, JSON.stringify(orders, null, 2), "utf8");
 }
 
 export async function GET(req) {
@@ -32,7 +26,11 @@ export async function GET(req) {
     try {
       const { data, error } = await supabase.from("orders").select("*");
       if (!error && data) {
-        orders = data;
+        orders = data.map(o => ({
+          ...o,
+          totalAmount: o.total || o.totalAmount,
+          createdAt: o.created_at || o.createdAt,
+        }));
       }
     } catch (e) {
       console.error("Supabase orders error:", e);
@@ -74,27 +72,34 @@ export async function POST(req) {
 
     const newOrder = {
       id: orderId,
-      createdAt: new Date().toISOString(),
+      created_at: new Date().toISOString(),
       customer,
       items,
-      totalAmount,
-      paymentMethod: paymentMethod || "kapida",
+      total: totalAmount,
+      payment_method: paymentMethod || "kapida",
       status: "yeni",
     };
 
     if (isSupabaseConfigured && supabase) {
-      try {
-        await supabase.from("orders").insert(newOrder);
-      } catch (e) {
-        console.error("Supabase order insert error:", e);
+      const { error } = await supabase.from("orders").insert(newOrder);
+      if (error) {
+        console.error("Supabase order insert error:", error);
+        return NextResponse.json({ error: error.message }, { status: 500 });
       }
+      return NextResponse.json({ success: true, order: { ...newOrder, totalAmount, createdAt: newOrder.created_at } });
     }
 
-    const localOrders = await getLocalOrders();
-    localOrders.unshift(newOrder);
-    await saveLocalOrders(localOrders);
+    // Try fallback to local file system if not serverless
+    try {
+      const localOrders = await getLocalOrders();
+      localOrders.unshift({ ...newOrder, totalAmount, createdAt: newOrder.created_at });
+      await fs.mkdir(DATA_DIR, { recursive: true });
+      await fs.writeFile(ORDERS_FILE, JSON.stringify(localOrders, null, 2), "utf8");
+    } catch (e) {
+      console.warn("Local JSON order write skipped/failed:", e.message);
+    }
 
-    return NextResponse.json({ success: true, order: newOrder });
+    return NextResponse.json({ success: true, order: { ...newOrder, totalAmount, createdAt: newOrder.created_at } });
   } catch (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

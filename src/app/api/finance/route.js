@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
 import fs from "fs/promises";
 import path from "path";
+import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 
 const FINANCE_FILE = path.join(process.cwd(), "data", "finance.json");
 
-async function readFinance() {
+async function readLocalFinance() {
   try {
     const raw = await fs.readFile(FINANCE_FILE, "utf8");
     return JSON.parse(raw);
@@ -13,19 +14,29 @@ async function readFinance() {
   }
 }
 
-async function writeFinance(data) {
-  await fs.writeFile(FINANCE_FILE, JSON.stringify(data, null, 2), "utf8");
-}
-
 export async function GET(req) {
   try {
-    const data = await readFinance();
     const { searchParams } = new URL(req.url);
     const type = searchParams.get("type") || "";
     const from = searchParams.get("from") || "";
     const to = searchParams.get("to") || "";
 
-    let transactions = data.transactions || [];
+    let transactions = [];
+
+    if (isSupabaseConfigured && supabase) {
+      const { data, error } = await supabase.from("finance_transactions").select("*");
+      if (!error && data) {
+        transactions = data.map(t => ({
+          ...t,
+          orderId: t.order_id,
+        }));
+      }
+    }
+
+    if (transactions.length === 0) {
+      const local = await readLocalFinance();
+      transactions = local.transactions || [];
+    }
 
     if (type) transactions = transactions.filter(t => t.type === type);
     if (from) transactions = transactions.filter(t => t.date >= from);
@@ -34,7 +45,7 @@ export async function GET(req) {
     return NextResponse.json({
       success: true,
       transactions,
-      categories: data.categories || {},
+      categories: { income: ["siparis", "diger"], expense: ["malzeme", "kargo", "iscilik", "diger"] },
     });
   } catch (err) {
     return NextResponse.json({ success: false, error: err.message }, { status: 500 });
@@ -44,8 +55,6 @@ export async function GET(req) {
 export async function POST(req) {
   try {
     const body = await req.json();
-    const data = await readFinance();
-
     const entry = {
       id: body.id || `TX-${Math.random().toString(36).slice(2, 10).toUpperCase()}`,
       type: body.type || "income",
@@ -53,20 +62,33 @@ export async function POST(req) {
       amount: Number(body.amount) || 0,
       description: body.description || "",
       date: body.date || new Date().toISOString().slice(0, 10),
-      orderId: body.orderId || "",
-      createdAt: body.createdAt || new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+      order_id: body.orderId || "",
     };
 
-    const existing = data.transactions.findIndex(t => t.id === entry.id);
-    if (existing > -1) {
-      data.transactions[existing] = entry;
-    } else {
-      data.transactions.unshift(entry);
+    if (isSupabaseConfigured && supabase) {
+      const { error } = await supabase.from("finance_transactions").upsert(entry);
+      if (error) {
+        console.error("Supabase finance upsert error:", error);
+        return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+      }
+      return NextResponse.json({ success: true, transaction: { ...entry, orderId: entry.order_id } });
     }
 
-    await writeFinance(data);
-    return NextResponse.json({ success: true, transaction: entry });
+    try {
+      const data = await readLocalFinance();
+      const existing = data.transactions.findIndex(t => t.id === entry.id);
+      if (existing > -1) {
+        data.transactions[existing] = { ...entry, orderId: entry.order_id };
+      } else {
+        data.transactions.unshift({ ...entry, orderId: entry.order_id });
+      }
+      await fs.mkdir(path.dirname(FINANCE_FILE), { recursive: true });
+      await fs.writeFile(FINANCE_FILE, JSON.stringify(data, null, 2), "utf8");
+    } catch (e) {
+      console.warn("Local finance JSON write skipped/failed:", e.message);
+    }
+
+    return NextResponse.json({ success: true, transaction: { ...entry, orderId: entry.order_id } });
   } catch (err) {
     return NextResponse.json({ success: false, error: err.message }, { status: 500 });
   }
@@ -78,9 +100,21 @@ export async function DELETE(req) {
     const id = searchParams.get("id");
     if (!id) return NextResponse.json({ success: false, error: "id required" }, { status: 400 });
 
-    const data = await readFinance();
-    data.transactions = data.transactions.filter(t => t.id !== id);
-    await writeFinance(data);
+    if (isSupabaseConfigured && supabase) {
+      const { error } = await supabase.from("finance_transactions").delete().eq("id", id);
+      if (error) {
+        return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+      }
+      return NextResponse.json({ success: true });
+    }
+
+    try {
+      const data = await readLocalFinance();
+      data.transactions = data.transactions.filter(t => t.id !== id);
+      await fs.writeFile(FINANCE_FILE, JSON.stringify(data, null, 2), "utf8");
+    } catch (e) {
+      console.warn("Local finance JSON delete skipped/failed:", e.message);
+    }
 
     return NextResponse.json({ success: true });
   } catch (err) {

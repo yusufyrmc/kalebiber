@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
 import fs from "fs/promises";
 import path from "path";
+import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 
 const DATA_DIR = path.join(process.cwd(), "data");
 const REVIEWS_FILE = path.join(DATA_DIR, "reviews.json");
 
 async function getReviews() {
   try {
-    await fs.mkdir(DATA_DIR, { recursive: true });
     const raw = await fs.readFile(REVIEWS_FILE, "utf8");
     return JSON.parse(raw);
   } catch {
@@ -15,15 +15,25 @@ async function getReviews() {
   }
 }
 
-async function saveReviews(reviews) {
-  await fs.mkdir(DATA_DIR, { recursive: true });
-  await fs.writeFile(REVIEWS_FILE, JSON.stringify(reviews, null, 2), "utf8");
-}
-
 export async function GET() {
-  const reviews = await getReviews();
-  const approved = reviews.filter((r) => r.approved !== false);
+  let reviews = [];
 
+  if (isSupabaseConfigured && supabase) {
+    try {
+      const { data, error } = await supabase.from("reviews").select("*");
+      if (!error && data) {
+        reviews = data;
+      }
+    } catch (e) {
+      console.error("Supabase reviews error:", e);
+    }
+  }
+
+  if (reviews.length === 0) {
+    reviews = await getReviews();
+  }
+
+  const approved = reviews.filter((r) => r.approved !== false);
   const starCount = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
   let totalRating = 0;
 
@@ -58,14 +68,28 @@ export async function POST(req) {
       author: String(author).trim().slice(0, 60),
       rating: Math.min(5, Math.max(1, Number(rating) || 5)),
       text: String(text).trim().slice(0, 2000),
-      productId: productId || "",
-      createdAt: new Date().toISOString(),
-      approved: true, // varsayılan onaylı
+      product_id: productId || null,
+      created_at: new Date().toISOString(),
+      approved: true,
     };
 
-    const reviews = await getReviews();
-    reviews.unshift(newReview);
-    await saveReviews(reviews);
+    if (isSupabaseConfigured && supabase) {
+      const { error } = await supabase.from("reviews").insert(newReview);
+      if (error) {
+        console.error("Supabase review error:", error);
+        return NextResponse.json({ error: error.message }, { status: 500 });
+      }
+      return NextResponse.json({ success: true, review: newReview });
+    }
+
+    try {
+      const reviews = await getReviews();
+      reviews.unshift(newReview);
+      await fs.mkdir(DATA_DIR, { recursive: true });
+      await fs.writeFile(REVIEWS_FILE, JSON.stringify(reviews, null, 2), "utf8");
+    } catch (e) {
+      console.warn("Local JSON review write skipped/failed:", e.message);
+    }
 
     return NextResponse.json({ success: true, review: newReview });
   } catch (error) {

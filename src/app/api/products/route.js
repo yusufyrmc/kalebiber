@@ -10,7 +10,12 @@ export async function GET() {
     if (isSupabaseConfigured && supabase) {
       const { data, error } = await supabase.from("products").select("*");
       if (!error && data && data.length > 0) {
-        return NextResponse.json({ success: true, products: data, source: "supabase" });
+        // Map Supabase column snake_case format to API format
+        const products = data.map(p => ({
+          ...p,
+          imageUrl: p.image_url || p.imageUrl,
+        }));
+        return NextResponse.json({ success: true, products, source: "supabase" });
       }
     }
   } catch (e) {
@@ -40,23 +45,29 @@ export async function POST(req) {
       stock: Number(body.stock) || 100,
       active: true,
       featured: Boolean(body.featured),
-      imageUrl: body.imageUrl || "",
+      image_url: body.imageUrl || body.image_url || "",
     };
 
     if (isSupabaseConfigured && supabase) {
-      try {
-        await supabase.from("products").upsert(newProduct);
-      } catch (e) {
-        console.error("Supabase insert error:", e);
+      const { error } = await supabase.from("products").upsert(newProduct);
+      if (error) {
+        console.error("Supabase upsert error:", error);
+        return NextResponse.json({ error: error.message }, { status: 500 });
       }
+      return NextResponse.json({ success: true, product: { ...newProduct, imageUrl: newProduct.image_url } });
     }
 
-    const raw = await fs.readFile(PRODUCTS_FILE, "utf8");
-    const products = JSON.parse(raw);
-    products.push(newProduct);
-    await fs.writeFile(PRODUCTS_FILE, JSON.stringify(products, null, 2), "utf8");
+    // Serverless (Vercel) fallback handling
+    try {
+      const raw = await fs.readFile(PRODUCTS_FILE, "utf8");
+      const products = JSON.parse(raw);
+      products.push({ ...newProduct, imageUrl: newProduct.image_url });
+      await fs.writeFile(PRODUCTS_FILE, JSON.stringify(products, null, 2), "utf8");
+    } catch (e) {
+      console.warn("Local JSON write skipped/failed:", e.message);
+    }
 
-    return NextResponse.json({ success: true, product: newProduct });
+    return NextResponse.json({ success: true, product: { ...newProduct, imageUrl: newProduct.image_url } });
   } catch (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
